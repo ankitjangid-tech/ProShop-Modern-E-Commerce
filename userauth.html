@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProShop - Login / Register</title>
+    <!-- Use the same CDN and styling setup -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .header-bg { background-color: #232f3e; color: white; }
+        .card-shadow { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- Simple Header for the Auth Page -->
+    <header class="header-bg sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+            <!-- Link back to the main shop -->
+            <a href="index.html" class="text-3xl font-bold text-white tracking-tight">Pro<span class="text-yellow-400">Shop</span></a>
+            <div class="text-xl font-semibold text-white">Account Access</div>
+        </div>
+    </header>
+
+    <main class="flex-grow container mx-auto px-4 py-12 flex items-center justify-center">
+        <div class="w-full max-w-md bg-white p-8 rounded-xl card-shadow shadow-lg">
+            
+            <!-- Tab Navigation for Login/Register -->
+            <div class="flex border-b mb-6" id="auth-tabs">
+                <button id="login-tab" class="flex-1 py-3 text-lg font-semibold border-b-2 border-indigo-600 text-indigo-600 transition" onclick="toggleAuthMode('login')">Login</button>
+                <button id="register-tab" class="flex-1 py-3 text-lg font-semibold text-gray-500 hover:text-indigo-600 transition" onclick="toggleAuthMode('register')">Register</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form" class="space-y-6" onsubmit="event.preventDefault(); performLogin();">
+                <div>
+                    <label for="login-email" class="block text-sm font-medium text-gray-700">Email Address</label>
+                    <input type="email" id="login-email" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500" placeholder="you@example.com">
+                </div>
+                <div>
+                    <label for="login-password" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="login-password" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter your password">
+                </div>
+                <button type="submit" class="w-full py-3 text-lg font-bold text-white rounded-lg bg-indigo-600 hover:bg-indigo-700 transition shadow-md">
+                    Sign In
+                </button>
+            </form>
+
+            <!-- Register Form (Hidden by default) -->
+            <form id="register-form" class="space-y-6 hidden" onsubmit="event.preventDefault(); performRegister();">
+                <div>
+                    <label for="register-name" class="block text-sm font-medium text-gray-700">Full Name</label>
+                    <input type="text" id="register-name" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500" placeholder="John Doe">
+                </div>
+                <div>
+                    <label for="register-email" class="block text-sm font-medium text-gray-700">Email Address</label>
+                    <input type="email" id="register-email" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500" placeholder="you@example.com">
+                </div>
+                <div>
+                    <label for="register-password" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="register-password" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Minimum 6 characters">
+                </div>
+                <button type="submit" class="w-full py-3 text-lg font-bold text-white rounded-lg bg-green-600 hover:bg-green-700 transition shadow-md">
+                    Create Account
+                </button>
+            </form>
+
+            <!-- Quick link to switch between forms -->
+            <p class="text-center text-sm text-gray-500 mt-6">
+                <span id="auth-link-text">New to ProShop?</span> 
+                <a href="#" class="font-medium text-indigo-600 hover:text-indigo-500" onclick="event.preventDefault(); toggleAuthMode(document.getElementById('register-form').classList.contains('hidden') ? 'register' : 'login');">
+                    <span id="auth-link-action">Create an account</span>
+                </a>
+            </p>
+
+        </div>
+    </main>
+
+    <script>
+        // Use a simple modal replacement for alerts/confirms
+        const showAuthMessage = (message) => {
+            const container = document.getElementById('auth-tabs').parentElement;
+            let messageBox = document.getElementById('auth-message-box');
+            
+            if (!messageBox) {
+                messageBox = document.createElement('div');
+                messageBox.id = 'auth-message-box';
+                messageBox.className = 'p-3 mb-4 rounded-lg text-center text-white bg-green-500 transition-opacity duration-300';
+                container.prepend(messageBox);
+            }
+            messageBox.textContent = message;
+            messageBox.style.opacity = '1';
+
+            setTimeout(() => {
+                messageBox.style.opacity = '0';
+                setTimeout(() => messageBox.remove(), 300);
+            }, 4000);
+        }
+
+        // Function to toggle between login and register views
+        function toggleAuthMode(mode) {
+            const loginForm = document.getElementById('login-form');
+            const registerForm = document.getElementById('register-form');
+            const loginTab = document.getElementById('login-tab');
+            const registerTab = document.getElementById('register-tab');
+            const linkText = document.getElementById('auth-link-text');
+            const linkAction = document.getElementById('auth-link-action');
+
+            if (mode === 'register') {
+                loginForm.classList.add('hidden');
+                registerForm.classList.remove('hidden');
+                loginTab.classList.remove('border-indigo-600', 'text-indigo-600');
+                loginTab.classList.add('text-gray-500');
+                registerTab.classList.add('border-indigo-600', 'text-indigo-600');
+                registerTab.classList.remove('text-gray-500');
+                linkText.textContent = 'Already have an account?';
+                linkAction.textContent = 'Sign In';
+            } else { // mode === 'login'
+                loginForm.classList.remove('hidden');
+                registerForm.classList.add('hidden');
+                registerTab.classList.remove('border-indigo-600', 'text-indigo-600');
+                registerTab.classList.add('text-gray-500');
+                loginTab.classList.add('border-indigo-600', 'text-indigo-600');
+                loginTab.classList.remove('text-gray-500');
+                linkText.textContent = 'New to ProShop?';
+                linkAction.textContent = 'Create an account';
+            }
+        }
+
+        // Simulated login function (redirects to home)
+        function performLogin() {
+            const email = document.getElementById('login-email').value;
+            showAuthMessage(`Login successful for ${email}! Redirecting to ProShop...`);
+            // In a real app, you would set a cookie/token here
+            setTimeout(() => {
+                window.location.href = 'mainpage.html';
+            }, 1000);
+        }
+
+        // Simulated registration function (switches to login view)
+        function performRegister() {
+            const name = document.getElementById('register-name').value;
+            const email = document.getElementById('register-email').value;
+            showAuthMessage(`Success! Account created for ${name}. Please sign in now.`);
+            
+            // Clear fields and switch to login
+            document.getElementById('register-name').value = '';
+            document.getElementById('register-email').value = '';
+            document.getElementById('register-password').value = '';
+
+            toggleAuthMode('login');
+        }
+        
+        // Initialize the view to login on load
+        window.onload = () => toggleAuthMode('login'); 
+    </script>
+</body>
+</html>
