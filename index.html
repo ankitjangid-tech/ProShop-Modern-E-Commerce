@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProShop: Modern E-Commerce</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    
+    <style>
+        /* Define custom colors and shadows, reverted to Black/Dark Blue/Orange look */
+        .header-bg {
+            background-color: #232f3e; /* Dark Blue Header (from image) */
+            color: white;
+        }
+        .header-accent {
+            background-color: #000000; /* Black Accent (from image) */
+        }
+        .search-button {
+            background-color: #007bff; /* Blue Search Button (from image) */
+            transition: background-color 0.2s;
+        }
+        .search-button:hover {
+            background-color: #0056b3; /* Slightly darker blue on hover */
+        }
+        .card-shadow {
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+
+        /* Modal Visibility Transitions for Cart and Product Details */
+        .modal {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s;
+        }
+        .modal.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Toast Notifications */
+        #toast-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 200;
+            display: flex;
+            flex-direction: column-reverse; /* New toasts appear above old ones */
+            gap: 10px;
+        }
+        .toast {
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            opacity: 0;
+            transform: translateX(100%);
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* Chart container sizing for responsiveness */
+        .chart-container {
+            position: relative;
+            height: 400px;
+            width: 100%;
+        }
+        
+        /* Adjust main content layout for small screens */
+        #shopping-view {
+            display: flex;
+            flex-direction: column; /* Stacks sidebar and grid on mobile */
+        }
+        @media (min-width: 768px) {
+            #shopping-view {
+                flex-direction: row; /* Side-by-side on desktop */
+            }
+        }
+        
+        /* Ensure the sticky sidebar works */
+        .h-fit {
+            max-height: calc(100vh - 140px); /* Height minus header height */
+            overflow-y: auto;
+        }
+
+        /* --- CSS for the Animated Checkmark (New) --- */
+        .success-checkmark {
+            width: 80px;
+            height: 115px;
+            margin: 0 auto;
+        }
+        .success-checkmark .check-icon {
+            width: 80px;
+            height: 80px;
+            position: relative;
+            border-radius: 50%;
+            box-sizing: content-box;
+            border: 4px solid #4CAF50; /* Green color */
+            margin: 0 auto;
+        }
+        .success-checkmark .check-icon::before,
+        .success-checkmark .check-icon::after {
+            content: '';
+            position: absolute;
+            height: 100%;
+            width: 100%;
+            background: white; /* Match background */
+            transform: scale(0);
+            opacity: 0;
+            animation: hide-background 0.5s ease-in-out 0.5s forwards;
+            border-radius: 50%;
+        }
+        .success-checkmark .check-icon span {
+            display: block;
+            position: absolute;
+            z-index: 10;
+            height: 5px;
+            background: #4CAF50;
+            border-radius: 2px;
+            transform-origin: 100% 50%;
+            animation: none;
+            opacity: 0;
+        }
+        .success-checkmark .check-icon .icon-line-tip {
+            top: 46px;
+            left: 14px;
+            width: 25px;
+            transform: rotate(45deg);
+            animation: icon-tip-animate 0.5s ease-in-out 0.9s forwards;
+        }
+        .success-checkmark .check-icon .icon-line-long {
+            top: 38px;
+            right: 18px;
+            width: 47px;
+            transform: rotate(-45deg);
+            animation: icon-long-animate 0.5s ease-in-out 1.2s forwards;
+        }
+        .success-checkmark .check-icon .icon-circle {
+            top: -4px;
+            left: -4px;
+            z-index: 1;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            box-sizing: content-box;
+            border: 4px solid #4CAF50;
+            border-color: #4CAF50;
+            border-left-color: transparent;
+            border-right-color: transparent;
+            border-bottom-color: transparent;
+            transition: border-color 0.5s ease-in-out;
+            animation: icon-circle-animate 0.8s ease-in-out forwards;
+        }
+        .success-checkmark .check-icon .icon-fix {
+            top: 8px;
+            width: 5px;
+            left: 26px;
+            z-index: 1;
+            height: 90px;
+            position: absolute;
+            background: white;
+            transform: rotate(-45deg);
+        }
+
+        @keyframes icon-circle-animate {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.05);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+                border: 4px solid #4CAF50;
+            }
+        }
+        @keyframes icon-tip-animate {
+            0% {
+                width: 0;
+                left: 1px;
+                top: 45px;
+                opacity: 0;
+            }
+            100% {
+                width: 25px;
+                left: 14px;
+                top: 46px;
+                opacity: 1;
+            }
+        }
+        @keyframes icon-long-animate {
+            0% {
+                width: 0;
+                right: 46px;
+                top: 54px;
+                opacity: 0;
+            }
+            100% {
+                width: 47px;
+                right: 18px;
+                top: 38px;
+                opacity: 1;
+            }
+        }
+        @keyframes hide-background {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+ <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables available in the environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        
+        window.db = null;
+        window.auth = null;
+        window.userId = null;
+
+        setLogLevel('Debug');
+
+        window.setupFirebase = async () => {
+            if (Object.keys(firebaseConfig).length > 0) {
+                try {
+                    const app = initializeApp(firebaseConfig);
+                    window.db = getFirestore(app);
+                    window.auth = getAuth(app);
+                    
+                    // Auth flow: Use custom token if available, otherwise sign in anonymously
+                    if (typeof __initial_auth_token !== 'undefined') {
+                        const userCredential = await signInWithCustomToken(window.auth, __initial_auth_token);
+                        window.userId = userCredential.user.uid;
+                    } else {
+                        await signInAnonymously(window.auth);
+                        window.userId = window.auth.currentUser.uid;
+                    }
+                    console.log("Firebase initialized. User ID:", window.userId);
+
+                    // Optional: Set up real-time listener for shopping features if they were using Firestore
+                    // Example: onSnapshot(collection(window.db, `artifacts/${appId}/users/${userId}/cart`), (snapshot) => { ... });
+
+                } catch (error) {
+                    console.error("Firebase Initialization Failed:", error);
+                    // Fallback to anonymous ID if Firebase completely fails
+                    window.userId = crypto.randomUUID(); 
+                }
+            } else {
+                console.warn("Firebase configuration not found. Running in local mode.");
+                window.userId = crypto.randomUUID();
+            }
+        };
+    </script>
+
+    
+              
+                
+<body class="bg-gray-100 font-sans antialiased">
+
+    <header class="header-bg sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-2 flex items-center justify-between space-x-4">
+            <div class="flex-shrink-0">
+                <a href="#" class="text-3xl font-bold text-white tracking-tight" onclick="showView('shopping')">Pro<span class="text-blue-400">Shop</span></a>
+            </div>
+
+            <div class="flex-grow max-w-sm sm:max-w-xl flex">
+                <input type="text" placeholder="Search ProShop (e.g., 'smart watch' or 't-shirt')" id="search-input"
+                        class="flex-grow p-2 rounded-l-lg border-none focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 shadow-inner"
+                        onkeyup="if(event.key === 'Enter') handleSearch()">
+                <button class="search-button p-2 rounded-r-lg text-white font-semibold shadow" onclick="handleSearch()">
+                    🔍
+                </button>
+            </div>
+<!-- Account & Lists Link (UPDATED TO LINK TO AUTH.HTML) -->
+            <div class="flex items-center space-x-6 text-sm">
+                  <a href="userauth.html" class="hidden sm:block cursor-pointer p-1 rounded hover:bg-indigo-600 transition">
+                    <p class="text-xs">Hello, Sign in</p>
+                    <p class="font-bold">Account & Lists</p>
+                </a>
+                <div class="hidden md:block cursor-pointer p-1 rounded hover:bg-indigo-600 transition" onclick="handleNavigationClick('')">
+                    <a href="userauth.html" class="hidden sm:block cursor-pointer p-1 rounded hover:bg-indigo-600 transition">
+                        <p class="text-xs">Returns</p>
+                        <p class="font-bold">& Orders</p>
+                    </a>
+                </div>
+                <div id="cart-icon" class="relative cursor-pointer p-1 rounded hover:bg-indigo-600 flex items-center space-x-1 transition" onclick="toggleCartModal(true)">
+                    <span class="text-2xl">🛒</span>
+                    <span id="cart-count" class="absolute top-0 left-5 bg-blue-500 text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full text-white shadow-lg">0</span>
+                    <p class="font-bold hidden sm:block mt-2">Cart</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="header-accent">
+            <div class="container mx-auto px-4 py-1 flex items-center space-x-6 text-sm">
+                <a href="#" class="text-white font-bold p-1 rounded hover:border hover:border-white transition" onclick="handleNavigationClick('All Categories')">All</a>
+                <a href="#" class="text-white p-1 rounded hover:border hover:border-white transition" onclick="handleNavigationClick('Today\'s Deals')">Today's Deals</a>
+                <a href="#" class="text-white p-1 rounded hover:border hover:border-white transition" onclick="handleNavigationClick('Customer Service')">Customer Service</a>
+                
+                <div id="shopping-tab" class="cursor-pointer text-white font-bold p-1 px-3 rounded-lg bg-blue-600 transition" onclick="showView('shopping')">SHOPPING</div>
+                <div id="analytics-tab" class="cursor-pointer text-white p-1 px-3 rounded-lg hover:bg-indigo-600 transition" onclick="showView('analytics')">ANALYTICS</div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 mt-6 flex flex-col gap-6">
+
+        <div id="shopping-view" class="w-full flex-grow flex">
+            <aside class="w-full md:w-64 flex-shrink-0 bg-white p-4 rounded-lg card-shadow hidden md:block sticky top-[120px] h-fit">
+                <h3 class="text-xl font-bold mb-4 border-b pb-2 text-gray-800">Filter Results</h3>
+                <div class="space-y-4">
+                    <div>
+                        <h4 class="font-semibold mb-2 text-gray-700">Categories</h4>
+                        <ul class="text-sm space-y-1">
+                            <li><input type="checkbox" id="cat-electronics" value="electronics" class="filter-category mr-2 accent-blue-600" onchange="handleFilter('category')"> <label for="cat-electronics">Electronics</label></li>
+                            <li><input type="checkbox" id="cat-apparel" value="apparel" class="filter-category mr-2 accent-blue-600" onchange="handleFilter('category')"> <label for="cat-apparel">Apparel</label></li>
+                            <li><input type="checkbox" id="cat-home" value="home goods" class="filter-category mr-2 accent-blue-600" onchange="handleFilter('category')"> <label for="cat-home">Home Goods</label></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold mb-2 text-gray-700">Price Range</h4>
+                        <select id="price-filter" class="w-full p-2 border rounded-lg text-sm focus:ring-blue-400 focus:border-blue-400 shadow-sm" onchange="handleFilter('price')">
+                            <option value="all">Any Price</option>
+                            <option value="low">₹0 - ₹4,000</option>
+                            <option value="mid">₹4,000 - ₹8,000</option>
+                            <option value="high">₹8,000+</option>
+                        </select>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold mb-2 text-gray-700">Customer Rating</h4>
+                        <div class="space-y-1">
+                            <label class="flex items-center text-sm">
+                                <input type="radio" name="rating" value="4" class="mr-2 accent-blue-600" onchange="handleFilter('rating')">
+                                <span class="text-yellow-500">★★★★</span> & Up
+                            </label>
+                            <label class="flex items-center text-sm">
+                                <input type="radio" name="rating" value="3" class="mr-2 accent-blue-600" onchange="handleFilter('rating')">
+                                <span class="text-yellow-500">★★★</span> & Up
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <section class="flex-grow md:ml-6 w-full">
+                <div class="flex justify-between items-center mb-4 bg-white p-4 rounded-lg card-shadow">
+                    <h2 class="text-2xl font-bold text-gray-800">Results: <span id="current-query" class="text-indigo-600 font-normal">All Products</span></h2>
+                    <span class="text-gray-600 text-sm" id="product-count">0 results</span>
+                </div>
+
+                <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    </div>
+                
+                <div id="no-results" class="hidden text-center p-12 bg-white rounded-lg mt-6 card-shadow">
+                    <p class="text-xl font-semibold text-gray-600">No products match your current search and filter criteria.</p>
+                    <p class="text-gray-500 mt-2">Try adjusting your filters or search term.</p>
+                </div>
+            </section>
+        </div>
+
+        <div id="analytics-view" class="w-full bg-white p-6 rounded-lg card-shadow" style="display:none;">
+            <h2 class="text-2xl font-bold mb-4 text-gray-800 border-b pb-2">Platform Performance Analytics</h2>
+            <p class="text-gray-600 mb-6">
+                This dashboard visualizes simulated sales and customer data, providing key insights into the store's operational health. 
+                Use these metrics to understand trends and optimize inventory.
+            </p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div class="bg-gray-50 p-4 rounded-xl border-l-4 border-blue-500 card-shadow">
+                    <p class="text-sm text-gray-500">Total Sales (Q3)</p>
+                    <p class="text-3xl font-bold text-gray-900">₹10,29,54,500</p>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-xl border-l-4 border-indigo-500 card-shadow">
+                    <p class="text-sm text-gray-500">Conversion Rate</p>
+                    <p class="text-3xl font-bold text-gray-900">4.1% <span class="text-green-500 text-lg">↑</span></p>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-xl border-l-4 border-red-500 card-shadow">
+                    <p class="text-sm text-gray-500">Avg. Order Value</p>
+                    <p class="text-3xl font-bold text-gray-900">₹7,050.50</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg border card-shadow">
+                <h3 class="text-xl font-semibold mb-4 text-gray-800">Monthly Revenue Trend (Last 6 Months)</h3>
+                <div class="chart-container">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+                <p class="text-sm text-gray-500 mt-4">
+                    The line chart above shows a steady growth trajectory, with a peak in the last month due to seasonal promotions.
+                </p>
+            </div>
+        </div>
+        
+        <div id="static-content-view" class="w-full bg-white p-6 rounded-lg card-shadow" style="display:none;">
+            </div>
+
+    </main>
+
+    <footer class="mt-12 py-8 border-t bg-gray-200 text-gray-600">
+        <div class="container mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-6 text-sm">
+            <div>
+                <h5 class="font-bold text-gray-800 mb-3">Get to Know Us</h5>
+                <ul class="space-y-2">
+                    <li><a href="#" class="hover:text-blue-600 transition" onclick="handleNavigationClick('About ProShop')">About ProShop</a></li>
+                    <li><a href="#" class="hover:text-blue-600 transition" onclick="handleNavigationClick('Careers')">Careers</a></li>
+                </ul>
+            </div>
+            <div>
+                <h5 class="font-bold text-gray-800 mb-3">Make Money with Us</h5>
+                <ul class="space-y-2">
+                    <li><a href="#" class="hover:text-blue-600 transition" onclick="handleNavigationClick('Sell on ProShop')">Sell on ProShop</a></li>
+                    <li><a href="#" class="hover:text-blue-600 transition" onclick="handleNavigationClick('Affiliate Program')">Affiliate Program</a></li>
+                </ul>
+            </div>
+            <div>
+                <h5 class="font-bold text-gray-800 mb-3">ProShop Payment Products</h5>
+                <ul class="space-y-2">
+                    <li><a href="#" class="hover:text-blue-600 transition" onclick="handleNavigationClick('Payment Methods')">Payment Methods</a></li>
+                    <li><a href="#" class="hover:text-blue-600 transition" onclick="handleNavigationClick('Gift Cards')">Gift Cards</a></li>
+                </ul>
+            </div>
+            <div>
+                <h5 class="font-bold text-gray-800 mb-3">Let Us Help You</h5>
+                <ul class="space-y-2">
+                    <li><a href="#" class="hover:text-blue-600 transition" onclick="handleNavigationClick('Customer Service')">Customer Service</a></li>
+                    <li><a href="#" class="hover:text-blue-600 transition" onclick="handleNavigationClick('Returns & Replacements')">Returns & Replacements</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="container mx-auto px-4 text-center mt-6 pt-4 border-t border-gray-300 text-sm">
+            <p class="text-sm font-bold text-gray-900">Developed & Designed By ANKIT JANGID</p>
+            
+            <p>&copy; 2025 ProShop. All rights reserved. | <a href="#" class="hover:text-blue-600 transition" onclick="handleNavigationClick('Footer Terms')">Terms</a> | <a href="#" class="hover:text-blue-600 transition" onclick="handleNavigationClick('Footer Privacy')">Privacy</a></p>
+        </div>
+    </footer>
+
+    <div id="cart-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]" role="dialog" aria-modal="true">
+        <div class="modal-content bg-white p-6 rounded-lg w-11/12 max-w-2xl card-shadow relative transform translate-y-0" onclick="event.stopPropagation()">
+            <button class="absolute top-4 right-4 text-gray-400 hover:text-gray-800 text-2xl p-1" onclick="toggleCartModal(false)" aria-label="Close Cart">
+                &times;
+            </button>
+            <h2 class="text-2xl font-bold mb-4 border-b pb-2 text-gray-800">Shopping Cart</h2>
+            
+            <div id="cart-items" class="space-y-4 max-h-96 overflow-y-auto pr-2">
+                <p id="empty-cart-message" class="text-gray-500 text-center py-8">Your cart is currently empty. Start shopping now!</p>
+            </div>
+            
+            <div class="mt-6 pt-4 border-t">
+                <div class="flex justify-between items-center text-xl font-bold mb-4">
+                    <span>Subtotal:</span>
+                    <span id="cart-total">₹0.00</span>
+                </div>
+                <button id="checkout-button" class="w-full p-3 text-lg font-bold text-white rounded-lg bg-blue-600 hover:bg-blue-700 transition disabled:bg-blue-300" onclick="window.location.href='userauth.html'">
+                    Proceed to Checkout (0 Items)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="product-details-modal" class="modal fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[120]" role="dialog" aria-modal="true">
+        <div class="modal-content bg-white p-6 rounded-xl w-11/12 max-w-4xl card-shadow relative transform translate-y-0 max-h-[95vh] overflow-y-auto" onclick="event.stopPropagation()">
+            <button class="absolute top-4 right-4 text-gray-400 hover:text-gray-800 text-2xl p-1" onclick="toggleProductDetailsModal(false)" aria-label="Close Product Details">
+                &times;
+            </button>
+            <div id="product-details-content">
+                </div>
+        </div>
+    </div>
+    
+    <div id="toast-notification"></div>
+
+    <script>
+        // --- APPLICATION STATE (MODIFIED: 10 NEW PRODUCTS ADDED) ---
+        // Prices are listed in base currency units (INR)
+        let products = [
+            { id: 1, name: "Apple Watch SE 3 Smart Watch", price: 25499, image: "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/MYJ53ref_VW_34FR+watch-case-40-aluminum-midnight-nc-se3_VW_34FR+watch-face-40-aluminum-midnight-se3_VW_34FR?wid=5120&hei=3280&bgc=fafafa&trim=1&fmt=p-jpg&qlt=80&.v=d0ExZHIvWW8vSDlQRklSZ3RQQTBOMCtGZUJWLzNFUFVydllxZFp0d1M4NTlEbzMrd1Z5SUpEd0hiT0ZLRlZGNGlWRUdUNk1DV3Vib1VmdWJFVUxsbFFScEJ3QjIyVnl6dGRLV0ozWGQvU3VKUGpRd0xiT1ZLbXg1bGRtS1ZnK3Q1R0kvaHc2Rlc3WjZucHZDbkNFZWRFUVN3R3VxZWhYYXgwOHljYmZFMXBocmMyRTN3NCt6QkoxaUdRb0FBay9VYktGTHdENW9lYUFnak5pcy9ReEdDU2lhNzRBekFoOVNaYks3amNTeHdjcVZlZkpkSmdNSDZtMm05T2pTWG9xbA", description: "The ultimate fitness and communication companion. Features include heart rate monitoring, GPS tracking, and 7-day battery life. It's waterproof and comes with a durable silicone strap.", category: "electronics", rating: 4.5, features: ["Waterproof up to 50m", "Built-in GPS", "7-Day Battery Life", "Heart Rate Monitor"] },
+            { id: 2, name: "Sony ULT Wear WH-ULT900N Noise-Cancelling Headphones", price: 15999, image: "https://m.media-amazon.com/images/I/610DB8Cwm7L._SX522_.jpg", description: "Immerse yourself in pure audio bliss with industry-leading noise cancellation technology. Enjoy 30 hours of playback and a comfortable over-ear design for long listening sessions.", category: "electronics", rating: 4.8, features: ["Industry-leading ANC", "30-Hour Battery", "Premium Over-Ear Design", "Fast USB-C Charging"] },
+            { id: 3, name: "Organic Cotton T-Shirt", price: 1999, image: "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcTyAaLNseDXOfHHS4rsHIAdSER74VFyToT9U3pnXebwZVUdNwLVvVzRG1k-7N2pk3mN4EQrykMXDkBy7A_INP264UNfZmyjVvz7xve0rKSTPsIj-RKB4Q8X", description: "Soft, breathable, and sustainably sourced. This t-shirt is a staple for any wardrobe, offering a relaxed fit and excellent durability. Available in multiple colors.", category: "apparel", rating: 4.2, features: ["100% Organic Cotton", "Relaxed Fit", "Machine Washable", "Eco-Friendly Dyes"] },
+            { id: 4, name: "BOSCH High-Speed Blender", price: 5999, image: "https://m.media-amazon.com/images/I/51BBjayQjUL._SX679_.jpg", description: "Perfect for smoothies and soups. Its powerful motor crushes ice and nuts with ease. Features a large 2-liter capacity and dishwasher-safe pitcher.", category: "home goods", rating: 4.6, features: ["1200W Peak Power", "2-Liter Capacity", "Ice Crushing Blades", "Variable Speed Control"] },
+            { id: 5, name: "Samsung 32-Inch(80cm) M7 UHD 4K LED Monitor", price: 32999, image: "https://m.media-amazon.com/images/I/41ZZKrwsR1L._SX300_SY300_QL70_FMwebp_.jpg", description: "Vivid colors and crystal-clear clarity for work or gaming. This 27-inch monitor boasts HDR support and a high refresh rate for a superior visual experience.", category: "electronics", rating: 4.7, features: ["27-inch 4K UHD", "HDR Support", "144Hz Refresh Rate", "USB-C Connectivity"] },
+            { id: 6, name: "Men Slim Fit Jeans", price: 3499, image: "https://m.media-amazon.com/images/I/71h1EE3uDNL._SX679_.jpg", description: "Comfortable stretch denim with a modern cut. Designed to hold their shape all day, these jeans are a versatile addition to your casual attire. Five pocket styling.", category: "apparel", rating: 4.0, features: ["98% Cotton, 2% Elastane", "Slim Tapered Leg", "Medium Indigo Wash", "Reinforced Seams"] },
+            { id: 7, name: "SIHOO M18 Ergonomic Office Chair", price: 15999, image: "https://m.media-amazon.com/images/I/41rqr3W2bOL._SY300_SX300_QL70_FMwebp_.jpg", description: "All-day comfort and superior lumbar support. Fully adjustable height, tilt, and armrests ensure a perfect fit for any user. Breathable mesh back.", category: "home goods", rating: 4.3, features: ["Adjustable Lumbar Support", "Breathable Mesh Back", "360-Degree Swivel", "Heavy Duty Base"] },
+            { id: 8, name: "Portable Power Bank (20000mAh)", price: 3799, image: "https://m.media-amazon.com/images/I/71+TP0CsltL._SY679_.jpg", description: "Charge your devices multiple times on the go with this high-capacity battery. Features fast charging ports for both USB-A and USB-C devices.", category: "electronics", rating: 3.9, features: ["20,000mAh Capacity", "18W Fast Charging", "Dual USB Output", "LED Charge Indicator"] },
+            { id: 9, name: "Wool Blend Scarf", price: 2999, image: "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcSGGRL3J--RwMoBQ2klfhaVxD_keOBRatCaLk2frt4J9dZ0iUxRJxrQ76uVXJItkOUdTM70YuN7Eg8c06OQ1hEK8s8nXvhnS3nasCMqEFMbM3xgf_9g-YsK", description: "Warm and stylish, perfect for winter. Made from a soft wool and acrylic blend. Available in four classic plaid patterns.", category: "apparel", rating: 4.4, features: ["Wool/Acrylic Blend", "Extra Soft Touch", "Generous Length (180cm)", "Dry Clean Only"] },
+            { id: 10, name: "Aroma Diffuser Set", price: 3299, image: "https://m.media-amazon.com/images/I/516gyAhi2mL._SX679_.jpg", description: "Create a calming atmosphere with essential oils. Features a large reservoir for up to 10 hours of continuous mist. Includes a color-changing LED light.", category: "home goods", rating: 4.1, features: ["Ultrasonic Mist Technology", "10-Hour Continuous Use", "7-Color LED Light", "Auto Shut-Off"] },
+            
+            // --- NEW 10 PRODUCTS ADDED BELOW ---
+            { id: 11, name: "Wireless Gaming Mouse", price: 4299, image: "https://m.media-amazon.com/images/I/61QPXQvpVTL._SX679_.jpg", description: "Ultra-fast response with adjustable DPI. Ergonomic design for long gaming sessions. Customizable RGB lighting.", category: "electronics", rating: 4.5, features: ["20,000 DPI Sensor", "RGB Customization", "7 Programmable Buttons", "100-Hour Battery Life"] },
+            { id: 12, name: "Men's Classic Polo Shirt", price: 1799, image: "https://classicpolos.com/cdn/shop/files/1_4e305082-e89f-4758-ab6a-126f50327cd5.jpg?v=1761735011&width=900", description: "Lightweight pique knit fabric. Classic fit with three-button placket. Available in 5 colors.", category: "apparel", rating: 4.1, features: ["100% Cotton Pique", "Machine Wash Cold", "Classic Relaxed Fit", "Breathable Fabric"] },
+            { id: 13, name: "Cast Iron Skillet (10-inch)", price: 2599, image: "https://m.media-amazon.com/images/I/61PzOUx-TZL._SX679_.jpg", description: "Pre-seasoned and ready to use. Excellent heat retention for searing and frying. Lifetime guarantee.", category: "home goods", rating: 4.9, features: ["Pre-Seasoned Surface", "Oven Safe up to 500°F", "Superior Heat Retention", "Durable Cast Iron"] },
+            { id: 14, name: "Apple iPad Pro 11″ (M4): Ultra Retina XDR Display, 256GB", price: 94990, image: "https://m.media-amazon.com/images/I/61G6WfvA9vL._SX679_.jpg", description: "Stunning Liquid Retina display. Powerful M-series chip for professional performance. All-day battery life.", category: "electronics", rating: 4.7, features: ["11-inch Liquid Retina", "M-Series Performance", "Face ID Security", "USB-C Thunderbolt"] },
+            { id: 15, name: "Women's High-Waist Yoga Pants", price: 2499, image: "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcTNqE_c9GmFH6uqyA4762fMKuLcXWP_3so0rWmoRG3tvTNIG-VNqTQk4SD2cPLiAc0WM8ocMRkFBjlj8NhjgMRQDT79XeJwDWVQSat1NKFaf_dKMUr1vVOY", description: "Buttery soft fabric with 4-way stretch. Features a hidden pocket for keys or cards. Non-see-through guarantee.", category: "apparel", rating: 4.6, features: ["Nylon-Spandex Blend", "High Compression Waist", "Moisture-Wicking", "Hidden Key Pocket"] },
+            { id: 16, name: "AGARO Smart Robot Vacuum Cleaner", price: 21999, image: "https://m.media-amazon.com/images/I/71xWKQn6rGL._SX679_.jpg", description: "Wi-Fi connected vacuum with intelligent mapping. Automatically docks and recharges. Control via app or voice assistant.", category: "home goods", rating: 4.4, features: ["Lidar Mapping", "2000Pa Suction Power", "App & Voice Control", "Auto-Recharge & Resume"] },
+            { id: 17, name: "Crucial X9 Portable SSD 1TB (USB 3.1)", price: 8999, image: "https://m.media-amazon.com/images/I/41FEEQDVQiL._SX679_.jpg", description: "Blazing fast transfer speeds up to 550MB/s. Shock-resistant and pocket-sized design. Perfect for backing up large files.", category: "electronics", rating: 4.3, features: ["1TB Capacity", "550MB/s Transfer", "USB 3.1 Type-C", "Shock Resistant Casing"] },
+            { id: 18, name: "Genuine Leather Bi-Fold Wallet", price: 1599, image: "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcTM3l6Mk5AAMuJXfXqZ_vg5ug2w3kuG4CSV3JeWhtj7hsEfdckOcp-saZtJggpeXkj_yuthCTRtf8HWBWXFNaf0Hq_nMkqbGYe456LU-tgUJUg7C6lrrgTJ", description: "Handcrafted from full-grain leather. Features 6 card slots, a money compartment, and a coin pouch. Classic design.", category: "apparel", rating: 4.7, features: ["Full-Grain Leather", "RFID Blocking Liner", "Slim Bi-Fold Design", "6 Card Slots"] },
+            { id: 19, name: "Automatic Drip Coffee Maker", price: 5499, image: "https://m.media-amazon.com/images/I/51ULijDvVPL._SX679_.jpg", description: "12-cup capacity glass carafe. Programmable timer for morning coffee. Keep warm function for up to 4 hours.", category: "home goods", rating: 4.0, features: ["12-Cup Capacity", "24-Hour Programmable", "Auto Shut-Off", "Anti-Drip System"] },
+            { id: 20, name: "Indoor Home Security Camera", price: 4799, image: "https://m.media-amazon.com/images/I/41K9YLa+ERL._SY300_SX300_QL70_FMwebp_.jpg", description: "1080p HD video with night vision. Two-way audio communication. Motion detection alerts sent to your phone.", category: "electronics", rating: 4.2, features: ["1080p HD Resolution", "Infrared Night Vision", "Two-Way Talk", "Cloud Storage Option"] }
+        ];
+        
+        let cart = [];
+        let currentSearchQuery = '';
+        let currentFilters = {
+            category: [],
+            price: 'all',
+            rating: 0
+        };
+        let productGridElement;
+        let cartCountElement;
+        let cartItemsElement;
+        let cartTotalElement;
+        let checkoutButton;
+        let noResultsElement;
+        let productDetailsModalElement; 
+        let staticContentViewElement; // New element reference
+
+        // --- UTILITY FUNCTIONS ---
+        const formatCurrency = (amount) => {
+            // Using 'en-IN' locale for Indian numbering system (lakhs/crores) and INR currency symbol.
+            return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(amount);
+        };
+
+        const showToast = (message, type = 'success') => {
+            const container = document.getElementById('toast-notification');
+            const toast = document.createElement('div');
+            
+            let bgColor = 'bg-blue-500'; // Default to blue/success
+            if (type === 'info') bgColor = 'bg-indigo-500';
+            else if (type === 'error') bgColor = 'bg-red-500';
+
+            toast.className = `toast ${bgColor} shadow-lg`;
+            toast.textContent = message;
+
+            container.appendChild(toast);
+
+            // Show the toast
+            setTimeout(() => toast.classList.add('show'), 10);
+
+            // Hide and remove the toast after 3 seconds
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => container.removeChild(toast), 300); // Wait for transition
+            }, 3000);
+        };
+
+        const toggleProductDetailsModal = (show) => {
+            if (show) {
+                productDetailsModalElement.classList.add('visible');
+            } else {
+                productDetailsModalElement.classList.remove('visible');
+                // Clear content after closing for next use
+                setTimeout(() => document.getElementById('product-details-content').innerHTML = '', 300);
+            }
+        };
+
+        /**
+         * The core logic for the animated order confirmation page.
+         */
+        const populateOrderConfirmation = () => {
+             // Generate a random 5-digit order ID for realism
+             const orderId = Math.floor(Math.random() * 90000) + 10000;
+             return `
+                <div class="text-center py-16 px-4">
+                    <div class="success-checkmark">
+                        <div class="check-icon">
+                            <span class="icon-line icon-line-tip"></span>
+                            <span class="icon-line icon-line-long"></span>
+                            <div class="icon-circle"></div>
+                            <div class="icon-fix"></div>
+                        </div>
+                    </div>
+                    <h1 class="text-4xl font-bold text-green-600 mt-8 mb-4">
+                        Your Order Is Confirmed!
+                    </h1>
+                    <p class="text-xl text-gray-700">
+                        Thank you for shopping with ProShop. Your order (PS-${orderId}) has been placed.
+                    </p>
+                    <p class="text-gray-500 mt-2">
+                        You will receive an email confirmation shortly with tracking details.
+                    </p>
+                    <a href="#" onclick="showView('shopping'); return false;" 
+                       class="mt-10 inline-block px-8 py-3 text-lg font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition transform hover:scale-105 shadow-xl">
+                        Continue Shopping
+                    </a>
+                </div>
+            `;
+        }
+        
+        /**
+         * Clears the cart and shows the order confirmation page.
+         * Called after successful payment (COD or Card)
+         */
+        const showOrderConfirmation = (paymentMethod) => {
+            if (cart.length === 0) {
+                 showToast("Cannot confirm order: cart is empty.", "error");
+                 showView('shopping');
+                 return;
+            }
+            
+            // 1. Clear Cart (Simulated Order Completion)
+            cart = [];
+            renderCart(); // Update cart UI everywhere
+            
+            showToast(`Order placed successfully via **${paymentMethod}**!`, 'success');
+
+            // 2. Show the Order Confirmation View
+            populateStaticContent('Order Confirmation'); 
+            showView('static-content'); 
+        }
+
+        /**
+         * Generates the HTML for the payment options and card form.
+         * This function manages the internal state of the 'Payment Gateway' page.
+         */
+        const showPaymentOptions = () => {
+            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const formattedTotal = formatCurrency(subtotal);
+            
+            // Card form HTML (hidden by default)
+            // FIXED: Added onclick="event.stopPropagation()" to the card-form-container to prevent click events from bubbling up 
+            // to the parent div which calls toggleCardForm(). This ensures inputs can be clicked and focused.
+            const cardFormHtml = `
+                <div id="card-form-container" onclick="event.stopPropagation()" class="border border-gray-300 p-6 rounded-xl bg-white shadow-inner mt-4" style="display:none;">
+                    <h4 class="text-lg font-semibold mb-4 text-gray-700">Enter Card Details (Simulated)</h4>
+                    <form onsubmit="event.preventDefault(); showOrderConfirmation('Credit/Debit Card');">
+                        <div class="space-y-4">
+                            <div>
+                                <label for="card-holder" class="block text-sm font-medium text-gray-700">Card Holder Name</label>
+                                <input type="text" id="card-holder" required 
+                                       class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500"
+                                       placeholder="Full Name as on card">
+                            </div>
+                            <div>
+                                <label for="card-number" class="block text-sm font-medium text-gray-700">Card Number</label>
+                                <input type="text" id="card-number" required pattern="[0-9]{16}" maxlength="16" 
+                                       class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500"
+                                       placeholder="XXXX XXXX XXXX XXXX">
+                            </div>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div>
+                                    <label for="expiry-date" class="block text-sm font-medium text-gray-700">Expiry Date</label>
+                                    <input type="text" id="expiry-date" required pattern="(0[1-9]|1[0-2])\\/([0-9]{2})" maxlength="5"
+                                           class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500"
+                                           placeholder="MM/YY">
+                                </div>
+                                <div>
+                                    <label for="cvv" class="block text-sm font-medium text-gray-700">CVV</label>
+                                    <input type="text" id="cvv" required pattern="[0-9]{3,4}" maxlength="4"
+                                           class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500"
+                                           placeholder="XXX">
+                                </div>
+                                <div class="col-span-1 flex items-end">
+                                    <img src="https://placehold.co/80x30/f0f0f0/333333?text=VISA/MC" alt="Card Logos" class="h-8 object-contain">
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="mt-6 w-full py-3 text-lg font-bold text-white rounded-lg bg-indigo-600 hover:bg-indigo-700 transition shadow-md">
+                            Proceed to Payment
+                        </button>
+                    </form>
+                </div>
+            `;
+            
+            // Main Payment Gateway HTML
+            return `
+                <div class="max-w-3xl mx-auto">
+                    <div class="p-4 mb-6 bg-indigo-100 rounded-xl border border-indigo-300">
+                        <p class="text-xl font-bold text-indigo-800">Total Payable: <span class="text-red-700">${formattedTotal}</span></p>
+                        <p class="text-sm text-indigo-600">Secure Checkout | Order Details Confirmed</p>
+                    </div>
+
+                    <h3 class="text-2xl font-bold mb-4 text-gray-800">Select Payment Method</h3>
+                    
+                    <div class="space-y-4">
+                        <div onclick="showOrderConfirmation('Cash on Delivery');"
+                             class="flex items-center justify-between p-6 bg-white rounded-xl border-2 border-green-500 hover:bg-green-50 transition cursor-pointer shadow-lg">
+                            <span class="text-xl font-semibold text-gray-800 flex items-center">
+                                <span class="text-3xl mr-3">💰</span> Cash on Delivery (COD)
+                            </span>
+                            <span class="text-green-600 font-bold">SELECT</span>
+                        </div>
+
+                        <div id="card-option-toggle" onclick="toggleCardForm()"
+                             class="p-6 bg-white rounded-xl border-2 border-blue-500 hover:bg-blue-50 transition cursor-pointer shadow-lg">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xl font-semibold text-gray-800 flex items-center">
+                                    <span class="text-3xl mr-3">💳</span> Debit/Credit Card
+                                </span>
+                                <span class="text-blue-600 font-bold">PAY NOW</span>
+                            </div>
+                            ${cardFormHtml}
+                        </div>
+                        
+                        <div onclick="showToast('Net Banking is only a simulation.', 'info')"
+                             class="flex items-center justify-between p-6 bg-white rounded-xl border border-gray-300 hover:bg-gray-50 transition cursor-pointer">
+                            <span class="text-xl font-semibold text-gray-500 flex items-center">
+                                <span class="text-3xl mr-3">🏦</span> Net Banking (Simulated)
+                            </span>
+                            <span class="text-gray-500">Unavailable</span>
+                        </div>
+                    </div>
+
+                    <button onclick="showView('shopping')" class="mt-8 px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500 transition font-semibold">← Change Order Details</button>
+                </div>
+            `;
+        };
+        
+        /**
+         * Toggle visibility of the simulated credit card form.
+         */
+        const toggleCardForm = () => {
+            const form = document.getElementById('card-form-container');
+            if (form) {
+                // Toggle display style
+                form.style.display = form.style.display === 'none' || form.style.display === '' ? 'block' : 'none';
+            }
+        };
+
+
+        /**
+         * Populates the static-content-view container with the appropriate "page" content.
+         */
+        const populateStaticContent = (destination) => {
+            if (!staticContentViewElement) return;
+
+            let title = '';
+            let content = '';
+            
+            // Function to generate a simple mock address block
+            const mockAddressBlock = (isDefault) => `
+                <div class="p-4 bg-white rounded-lg border border-indigo-200 shadow-md relative">
+                    <p class="font-bold text-indigo-700">User Name</p>
+                    <p>Flat 101, B Block, High Street Apartments</p>
+                    <p>Gandhi Nagar, Bengaluru - 560075</p>
+                    <p>Karnataka, India</p>
+                    <p>Phone: +91 98765 43210</p>
+                    ${isDefault ? '<span class="absolute top-2 right-2 text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-1 rounded-full">DEFAULT</span>' : ''}
+                    <div class="mt-3 flex space-x-3 text-sm">
+                        <a href="#" onclick="showToast('Editing address (Simulated)', 'info'); return false;" class="text-blue-600 hover:text-blue-800 font-medium">Edit</a>
+                        <span class="text-gray-300">|</span>
+                        <a href="#" onclick="showToast('Deleting address (Simulated)', 'error'); return false;" class="text-gray-600 hover:text-red-500">Remove</a>
+                    </div>
+                </div>
+            `;
+
+
+            switch (destination) {
+                case "Order Confirmation": // New key to replace "Checkout"
+                    title = "🎉 Order Confirmation";
+                    content = populateOrderConfirmation();
+                    break;
+                case "Payment Gateway": // New key for payment options
+                    title = "🔒 Secure Payment Gateway";
+                    content = showPaymentOptions();
+                    break;
+                case "About ProShop":
+                    title = "✨ About ProShop";
+                    content = `<p class="text-lg">ProShop is India's leading simulated e-commerce platform, focused on providing the best user experience and cutting-edge features. We are committed to digital innovation and rapid deployment. We currently host over 10 simulated products!</p><p class="mt-4 text-sm text-gray-500">Founded: 2025 (Simulated)</p>`;
+                    break;
+                case "Careers":
+                    title = "🚀 Careers at ProShop";
+                    content = `<p class="text-lg">Join our dynamic, high-growth environment! We are looking for talented developers, designers, and e-commerce strategists to build the future of online retail. Current openings: **Frontend Developer**, **AI/ML Engineer**, **Mock Data Analyst**.</p><p class="mt-4 text-sm text-gray-500">Apply today and start tomorrow (Simulated).</p>`;
+                    break;
+                case "Sell on ProShop":
+                    title = "🤝 Sell on ProShop";
+                    content = `<p class="text-lg">Become a ProShop seller and reach millions of simulated customers! Our platform offers competitive rates, fast payment processing (simulated), and powerful analytics to help grow your business.</p><p class="mt-4 font-semibold text-blue-600">Start your 30-day free trial now!</p>`;
+                    break;
+                case "Affiliate Program":
+                    title = "🔗 Affiliate Program";
+                    content = `<p class="text-lg">Partner with ProShop and earn commission for every successful sale referred from your website or social media. Earn up to 10% commission on simulated sales. Join today!</p><p class="mt-4 text-sm text-gray-500">Commission rates are for demonstration purposes only.</p>`;
+                    break;
+                case "Payment Methods":
+                    title = "💳 Payment Methods";
+                    content = `<p class="text-lg">We accept all major simulated payment methods: **Credit/Debit Card** (Visa, MasterCard), **Net Banking**, **UPI (Unified Payments Interface)**, and **ProShop Gift Cards**. All transactions are secure and encrypted.</p><p class="mt-4 text-sm text-gray-500">Cash on Delivery (COD) is not currently supported in this simulation.</p>`;
+                    break;
+                case "Gift Cards":
+                    title = "🎁 ProShop Gift Cards";
+                    content = `<p class="text-lg">The perfect gift for any occasion! Purchase digital gift cards ranging from ₹500 to ₹10,000. Redeemable against any product on the ProShop platform. Treat yourself or a friend!</p><p class="mt-4 text-sm text-gray-500">Gift card balances are tracked in the console.</p>`;
+                    break;
+                case "Returns & Replacements":
+                    title = "🔄 Returns & Replacements";
+                    content = `<p class="text-lg">Our 30-day hassle-free return policy ensures you can shop with confidence. To initiate a return, visit your **'Your Orders'** section. Most items are eligible for refund or replacement within 30 days of delivery.</p><p class="mt-4 font-semibold text-blue-600">Note: Items must be in original, unused condition.</p>`;
+                    break;
+                case "Today's Deals":
+                    title = "🎁 Today's Best Deals";
+                    content = `
+                        <div class="space-y-4">
+                            <p class="text-lg font-semibold text-blue-700">Limited Time Offers - Ending Soon!</p>
+                            <ul class="list-disc list-inside space-y-2 ml-4">
+                                <li>**50% Off** Smart Watch Pro: Only ${formatCurrency(10499 / 2)} (Regular: ${formatCurrency(10499)}) - Limited stock!</li>
+                                <li>**20% Off** High-Speed Blender: Now ${formatCurrency(7499 * 0.8)}</li>
+                                <li>Flat ${formatCurrency(500)} off on all Apparel orders over ${formatCurrency(4000)}.</li>
+                                <li>Save an extra 10% on all Electronics today!</li>
+                            </ul>
+                            <p class="pt-2 text-sm text-gray-500">All deals are subject to availability. Prices automatically adjust at checkout.</p>
+                        </div>
+                    `;
+                    break;
+                case "Customer Service":
+                    title = "📞 Customer Service & Help";
+                    content = `
+                        <div class="space-y-4">
+                            <p class="text-lg font-semibold">How can we help you today?</p>
+                            <p>For immediate assistance, please use our virtual assistant or contact us via one of the following methods:</p>
+                            <ul class="space-y-2 ml-4">
+                                <li class="p-2 bg-indigo-50 rounded-lg border">Live Chat: <span class="text-indigo-600 font-medium">Available 24/7 (Simulated)</span></li>
+                                <li class="p-2 bg-indigo-50 rounded-lg border">Phone Support: 1-800-555-PROSHOP (8am-8pm IST)</li>
+                                <li class="p-2 bg-indigo-50 rounded-lg border">Email Support: <a href="mailto:support@proshop.in" class="text-blue-500 hover:underline">support@proshop.in</a></li>
+                                <li class="p-2 bg-indigo-50 rounded-lg border">FAQ/Help Center: <span class="text-indigo-600 font-medium">Browse articles</span></li>
+                            </ul>
+                        </div>
+                    `;
+                    break;
+                case "Account & Lists":
+                    title = "👤 Your ProShop Account";
+                    content = `
+                        <div class="space-y-4">
+                            <p class="text-xl font-semibold text-gray-800 border-b pb-2">Your Profile Dashboard</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <a href="#" class="p-4 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition border border-indigo-200 shadow" onclick="handleNavigationClick('Your Orders')">
+                                    <p class="font-bold text-indigo-700 text-lg">Your Orders</p>
+                                    <p class="text-sm text-gray-600">Track, return, or buy items again.</p>
+                                </a>
+                                <a href="#" class="p-4 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition border border-indigo-200 shadow" onclick="handleNavigationClick('Your Addresses')">
+                                    <p class="font-bold text-indigo-700 text-lg">Your Addresses</p>
+                                    <p class="text-sm text-gray-600">Edit shipping and billing addresses.</p>
+                                </a>
+                                <a href="#" class="p-4 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition border border-indigo-200 shadow" onclick="handleNavigationClick('Wish List')">
+                                    <p class="font-bold text-indigo-700 text-lg">Wish List</p>
+                                    <p class="text-sm text-gray-600">Keep track of items you want.</p>
+                                </a>
+                                <a href="#" class="p-4 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition border border-indigo-200 shadow" onclick="showToast('Managing payments (Simulated)', 'info'); return false;">
+                                    <p class="font-bold text-indigo-700 text-lg">Manage Payments</p>
+                                    <p class="text-sm text-gray-600">Add or edit card details.</p>
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                    break;
+                case "Your Orders":
+                    title = "📦 Your Order History";
+                    content = `
+                        <div class="space-y-4">
+                            <p class="text-lg font-semibold text-gray-800">Recent Orders (Mock Data)</p>
+                            <div class="border rounded-xl overflow-hidden shadow-lg">
+                                <div class="p-3 bg-indigo-100 font-medium grid grid-cols-4 text-sm border-b text-indigo-800">
+                                    <span>Order ID</span>
+                                    <span>Date</span>
+                                    <span>Status</span>
+                                    <span class="text-right">Total</span>
+                                </div>
+                                <div class="p-3 grid grid-cols-4 text-sm items-center border-b hover:bg-gray-50 transition">
+                                    <span class="font-mono text-xs">PS-74823</span>
+                                    <span>20 Oct 2025</span>
+                                    <span class="text-green-600 font-semibold">Delivered</span>
+                                    <span class="text-right">${formatCurrency(20999)}</span>
+                                </div>
+                                <div class="p-3 grid grid-cols-4 text-sm items-center border-b hover:bg-gray-50 transition">
+                                    <span class="font-mono text-xs">PS-74011</span>
+                                    <span>15 Oct 2025</span>
+                                    <span class="text-blue-600 font-semibold">Shipped</span>
+                                    <span class="text-right">${formatCurrency(10499)}</span>
+                                
+                                </div>
+                                <div class="p-3 grid grid-cols-4 text-sm items-center hover:bg-gray-50 transition">
+                                    <span class="font-mono text-xs">PS-73994</span>
+                                    <span>10 Oct 2025</span>
+                                    <span class="text-yellow-600 font-semibold">Processing</span>
+                                    <span class="text-right">${formatCurrency(4999)}</span>
+                                </div>
+                            </div>
+                            <button onclick="showToast('Simulating starting a return...', 'info'); return false;" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold">Start a Return</button>
+                        </div>
+                    `;
+                    break;
+                case "Your Addresses":
+                    title = "🏠 Your Saved Addresses";
+                    content = `
+                        <div class="space-y-4">
+                            <p class="text-lg font-semibold text-gray-800">Manage your delivery locations:</p>
+                            ${mockAddressBlock(true)}
+                            ${mockAddressBlock(false)}
+                            <button onclick="showToast('Simulating adding a new address...', 'info'); return false;" class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-semibold">Add New Address</button>
+                        </div>
+                    `;
+                    break;
+                case "Wish List":
+                    title = "❤️ Your Wish List";
+                    content = `
+                        <div class="space-y-4">
+                            <p class="text-lg font-semibold text-gray-800">Items you've been eyeing (Mock Data):</p>
+                            <ul class="space-y-3">
+                                <li class="flex justify-between items-center p-3 border rounded-lg bg-blue-50">
+                                    <span class="font-medium text-gray-900">4K LED Monitor</span>
+                                    <div class="flex items-center space-x-3">
+                                        <span class="font-bold text-blue-700">${formatCurrency(32999)}</span>
+                                        <button onclick="addToCart(5); showView('shopping'); return false;" class="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">Add to Cart</button>
+                                        <button onclick="showToast('Item removed from list.', 'error'); return false;" class="text-red-500 hover:text-red-700 text-lg">&times;</button>
+                                    </div>
+                                </li>
+                                <li class="flex justify-between items-center p-3 border rounded-lg bg-blue-50">
+                                    <span class="font-medium text-gray-900">Wool Blend Scarf</span>
+                                    <div class="flex items-center space-x-3">
+                                        <span class="font-bold text-blue-700">${formatCurrency(2999)}</span>
+                                        <button onclick="addToCart(9); showView('shopping'); return false;" class="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">Add to Cart</button>
+                                        <button onclick="showToast('Item removed from list.', 'error'); return false;" class="text-red-500 hover:text-red-700 text-lg">&times;</button>
+                                    </div>
+                                </li>
+                            </ul>
+                            <p class="pt-2 text-sm text-gray-500">Share your list or move items to your cart.</p>
+                        </div>
+                    `;
+                    break;
+                case "Footer Terms":
+                    title = "📜 Terms of Service";
+                    content = `<p class="text-lg">Welcome to ProShop's Simulated Terms. By using this platform, you agree to our policies on mock data usage, simulated transactions, and placeholder content. All prices and sales are non-binding and for demonstration only. Please enjoy the simulation responsibly.</p><p class="mt-4 text-sm text-gray-500">Last Updated: Oct 2025.</p>`;
+                    break;
+                case "Footer Privacy":
+                    title = "🔒 Privacy Policy";
+                    content = `<p class="text-lg">ProShop is committed to protecting your simulated privacy. We only collect anonymous data on clicks, search terms, and successful page views to improve the demo experience. No real personal information or cookies are stored.</p><p class="mt-4 text-sm text-gray-500">Your privacy is secure (in this simulation).</p>`;
+                    break;
+                default:
+                    title = `Page Not Found: ${destination}`;
+                    content = `<p class="text-lg text-red-600">The page for "${destination}" is under development. Please click "Back to Shopping" to return.</p>`;
+            }
+            
+            // Update the view content
+            if (destination === 'Order Confirmation' || destination === 'Payment Gateway') {
+                 // These pages have their own custom, full-page structure
+                staticContentViewElement.innerHTML = content;
+            } else {
+                 // For all other pages, use the default static content wrapper
+                 staticContentViewElement.innerHTML = `
+                    <h2 class="text-3xl font-bold mb-6 border-b pb-3 text-gray-800">${title}</h2>
+                    <div class="text-gray-700 space-y-4">
+                        ${content}
+                    </div>
+                    <button onclick="showView('shopping')" class="mt-8 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-semibold">← Back to Shopping</button>
+                `;
+            }
+            
+            // Scroll to the top of the content area for the "new page" feel
+            window.scrollTo(0, 0); 
+        };
+
+        /**
+         * The central function to switch between the main content views.
+         */
+        const showView = (viewId, destination = null) => {
+            // Hide all main content views
+            document.getElementById('shopping-view').style.display = 'none';
+            document.getElementById('analytics-view').style.display = 'none';
+            document.getElementById('static-content-view').style.display = 'none';
+
+            // Show the requested view
+            if (viewId === 'shopping') {
+                document.getElementById('shopping-view').style.display = 'flex';
+            } else if (viewId === 'analytics') {
+                document.getElementById('analytics-view').style.display = 'block';
+                if (!window.revenueChartInstance) {
+                    initAnalyticsChart();
+                }
+            } else if (viewId === 'static-content') {
+                document.getElementById('static-content-view').style.display = 'block';
+                if (destination) {
+                    populateStaticContent(destination);
+                }
+            }
+            
+            // Update tab styles (Blue for active, Gray for inactive)
+            document.getElementById('shopping-tab').classList.toggle('bg-blue-600', viewId === 'shopping');
+            document.getElementById('shopping-tab').classList.toggle('bg-gray-600', viewId !== 'shopping');
+            document.getElementById('analytics-tab').classList.toggle('bg-blue-600', viewId === 'analytics');
+            document.getElementById('analytics-tab').classList.toggle('bg-gray-600', viewId !== 'analytics');
+            
+            // Handle hover class to maintain consistency
+            document.getElementById('shopping-tab').classList.toggle('hover:bg-indigo-600', viewId !== 'shopping');
+            document.getElementById('analytics-tab').classList.toggle('hover:bg-indigo-600', viewId !== 'analytics');
+        };
+
+        /**
+         * Handles the start of the checkout process: verifies cart and navigates to Payment Gateway.
+         * The order confirmation logic is now inside showOrderConfirmation().
+         */
+        const handleCheckout = () => {
+            if (cart.length === 0) {
+                 showToast("Your cart is empty. Please add items to checkout.", "error");
+                 toggleCartModal(false);
+                 return;
+            }
+            
+            // 1. Close Cart Modal
+            toggleCartModal(false);
+            
+            // 2. Navigate to Payment Gateway Page
+            showView('static-content', 'Payment Gateway'); 
+        }
+
+
+        /**
+         * Handles all main header and footer navigation clicks.
+         */
+        const handleNavigationClick = (destination) => {
+            // Special case for the old "Checkout" which now calls the new process
+            if (destination === 'Checkout') {
+                handleCheckout();
+                return;
+            }
+            
+            // New case for the button on the cart modal
+            if (destination === 'Payment Gateway') {
+                handleCheckout();
+                return;
+            }
+
+
+            // All content-heavy links are handled as full page views
+            const pageViews = [
+                "About ProShop", "Careers", "Sell on ProShop", "Affiliate Program",
+                "Payment Methods", "Gift Cards", "Returns & Replacements", 
+                "Customer Service", "Account & Lists", "Your Orders", 
+                "Your Addresses", "Wish List", "Footer Terms", "Footer Privacy", "Today's Deals"
+            ];
+
+            if (pageViews.includes(destination)) {
+                showView('static-content', destination);
+            } else {
+                // Fallback for All Categories, etc., which would normally trigger a search or filter change
+                showToast(`Navigating to **${destination}** (Placeholder)`, 'info');
+            }
+        };
+
+        // --- CORE E-COMMERCE LOGIC (MODIFIED CARD HTML) ---
+
+        /**
+         * Generates the HTML for a single product card.
+         */
+        const createProductCard = (product) => {
+            const ratingStars = '★'.repeat(Math.round(product.rating)) + '☆'.repeat(5 - Math.round(product.rating));
+            
+            // The category badge will now always be dark gray/black, as per the reference image
+            // We no longer need dynamic colors here.
+            
+            return `
+                <div class="bg-white rounded-xl overflow-hidden card-shadow hover:shadow-xl transition duration-300 flex flex-col relative">
+                    <a href="#" onclick="showProductDetails(${product.id}); return false;" class="group block">
+                        <img src="${product.image}" onerror="this.onerror=null; this.src='https://placehold.co/400x300/cccccc/000000?text=Image+Missing';" alt="${product.name}" class="w-full h-48 object-cover group-hover:opacity-90 transition">
+                        
+                        <div class="absolute top-0 right-0 bg-gray-800 text-white text-xs font-semibold px-3 py-1 rounded-bl-lg rounded-tr-xl capitalize">
+                            ${product.category}
+                        </div>
+                    </a>
+                    <div class="p-4 flex flex-col flex-grow">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-1 group-hover:text-blue-600 transition">${product.name}</h3>
+                        <p class="text-yellow-500 text-sm mb-2">${ratingStars} (${product.rating})</p>
+                        <p class="text-2xl font-bold text-red-600 mb-4">${formatCurrency(product.price)}</p>
+                        <p class="text-sm text-gray-600 flex-grow mb-4">${product.description.substring(0, 50)}...</p>
+                        <button onclick="addToCart(${product.id})" class="mt-auto w-full py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition">
+                            Add to Cart
+                        </button>
+                    </div>
+                </div>
+            `;
+        };
+
+        /**
+         * Renders the product grid based on current search and filters.
+         */
+        const renderProducts = () => {
+            if (!productGridElement) return;
+
+            let filteredProducts = products.filter(product => {
+                const searchMatch = !currentSearchQuery || 
+                                    product.name.toLowerCase().includes(currentSearchQuery) ||
+                                    product.description.toLowerCase().includes(currentSearchQuery);
+                
+                const categoryMatch = currentFilters.category.length === 0 || 
+                                      currentFilters.category.includes(product.category);
+
+                let priceMatch = true;
+                if (currentFilters.price !== 'all') {
+                    const price = product.price;
+                    if (currentFilters.price === 'low') priceMatch = price >= 0 && price <= 4000;
+                    else if (currentFilters.price === 'mid') priceMatch = price > 4000 && price <= 8000;
+                    else if (currentFilters.high === 'high') priceMatch = price > 8000;
+                }
+
+                const ratingMatch = product.rating >= currentFilters.rating;
+
+                return searchMatch && categoryMatch && priceMatch && ratingMatch;
+            });
+            
+            filteredProducts.sort((a, b) => a.price - b.price);
+
+            productGridElement.innerHTML = filteredProducts.map(createProductCard).join('');
+            
+            document.getElementById('product-count').textContent = `${filteredProducts.length} results`;
+            document.getElementById('no-results').classList.toggle('hidden', filteredProducts.length > 0);
+        };
+
+        /**
+         * Fetches a product's full details and populates the dedicated modal.
+         */
+        const showProductDetails = (productId) => {
+            const product = products.find(p => p.id === productId);
+            if (!product) {
+                showToast("Product not found!", "error");
+                return;
+            }
+
+            const ratingStars = '★'.repeat(Math.round(product.rating)) + '☆'.repeat(5 - Math.round(product.rating));
+            
+            // Generate Features List HTML with new styling
+            const featuresHtml = product.features ? product.features.map(f => `<li class="text-gray-700 flex items-center"><span class="text-blue-600 mr-2 font-bold text-lg">✓</span> ${f}</li>`).join('') : '';
+
+            const contentHtml = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div class="md:col-span-1">
+                        <img src="${product.image}" onerror="this.onerror=null; this.src='https://placehold.co/400x400/cccccc/000000?text=Image+Missing';" alt="${product.name}" class="w-full rounded-xl shadow-lg border">
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <h1 class="text-3xl font-bold text-gray-900 mb-2">${product.name}</h1>
+                        <p class="text-sm text-gray-500 mb-4 capitalize">Category: ${product.category}</p>
+
+                        <div class="flex items-center mb-4">
+                            <span class="text-yellow-500 text-xl">${ratingStars}</span>
+                            <span class="ml-2 text-lg font-semibold text-gray-800">${product.rating} / 5.0</span>
+                        </div>
+
+                        <div class="p-4 bg-blue-50 rounded-lg mb-6 border border-blue-200">
+                            <p class="text-4xl font-extrabold text-red-700">${formatCurrency(product.price)}</p>
+                            <p class="text-green-600 font-semibold mt-1">In Stock. Ships in 1-2 days.</p>
+                        </div>
+                        
+                        <h3 class="text-xl font-semibold text-gray-800 mb-2 border-b pb-1">Product Description</h3>
+                        <p class="text-gray-700 mb-6">${product.description}</p>
+                        
+                        <h3 class="text-xl font-semibold text-gray-800 mb-2 border-b pb-1">Key Features</h3>
+                        <ul class="list-none space-y-1 ml-0 grid grid-cols-1 sm:grid-cols-2">
+                            ${featuresHtml}
+                        </ul>
+                        
+                        <button onclick="addToCart(${product.id}); toggleProductDetailsModal(false);" class="mt-8 w-full py-3 text-xl font-bold text-white rounded-lg bg-blue-600 hover:bg-blue-700 transition shadow-lg">
+                            Add to Cart
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('product-details-content').innerHTML = contentHtml;
+            toggleProductDetailsModal(true);
+        };
+
+        // --- REMAINING E-COMMERCE LOGIC (NO CHANGE) ---
+        const addToCart = (productId) => {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+
+            const existingItem = cart.find(item => item.id === productId);
+
+            if (existingItem) {
+                existingItem.quantity += 1;
+                showToast(`${product.name} quantity increased to ${existingItem.quantity}.`, 'info');
+            } else {
+                cart.push({ ...product, quantity: 1 });
+                showToast(`${product.name} added to cart!`, 'success');
+            }
+
+            renderCart();
+        };
+
+        const removeFromCart = (productId) => {
+            const itemIndex = cart.findIndex(item => item.id === productId);
+            if (itemIndex > -1) {
+                const productName = cart[itemIndex].name;
+                cart.splice(itemIndex, 1);
+                showToast(`${productName} removed from cart.`, 'error');
+                renderCart();
+            }
+        };
+
+        const renderCart = () => {
+            if (!cartItemsElement) return;
+
+            if (cart.length === 0) {
+                cartItemsElement.innerHTML = `<p id="empty-cart-message" class="text-gray-500 text-center py-8">Your cart is currently empty. Start shopping now!</p>`;
+                document.getElementById('cart-count').textContent = '0';
+            } else {
+                cartItemsElement.innerHTML = cart.map(item => `
+                    <div class="flex items-center space-x-4 border-b pb-4 last:border-b-0">
+                        <img src="${item.image}" alt="${item.name}" class="w-16 h-16 object-cover rounded-md flex-shrink-0">
+                        <div class="flex-grow">
+                            <p class="font-semibold text-gray-900">${item.name}</p>
+                            <p class="text-sm text-gray-600">${formatCurrency(item.price)} x ${item.quantity}</p>
+                            <p class="font-bold text-blue-600">${formatCurrency(item.price * item.quantity)}</p>
+                        </div>
+                        <button onclick="removeFromCart(${item.id})" class="text-red-500 hover:text-red-700 text-xl flex-shrink-0" aria-label="Remove item">
+                            &times;
+                        </button>
+                    </div>
+                `).join('');
+                document.getElementById('cart-count').textContent = cart.reduce((total, item) => total + item.quantity, 0);
+            }
+
+            updateCartTotal();
+        };
+
+        const updateCartTotal = () => {
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            
+            cartTotalElement.textContent = formatCurrency(total);
+            checkoutButton.textContent = `Proceed to Checkout (${totalItems} Items)`;
+            checkoutButton.disabled = totalItems === 0;
+        };
+
+        const toggleCartModal = (show) => {
+            const modal = document.getElementById('cart-modal');
+            if (show) {
+                modal.classList.add('visible');
+            } else {
+                modal.classList.remove('visible');
+            }
+        };
+
+        const handleSearch = () => {
+            const input = document.getElementById('search-input').value.trim().toLowerCase();
+            currentSearchQuery = input;
+            document.getElementById('current-query').textContent = input ? `Search: "${input}"` : 'All Products';
+            
+            // Clear filters when a new search is performed for simplicity
+            currentFilters = { category: [], price: 'all', rating: 0 };
+            document.getElementById('price-filter').value = 'all';
+            document.querySelectorAll('.filter-category').forEach(cb => cb.checked = false);
+            document.querySelectorAll('input[name="rating"]').forEach(rb => rb.checked = false);
+
+
+            renderProducts();
+            showToast(input ? `Searching for "${input}"...` : "Showing all products.", 'info');
+        };
+
+        const handleFilter = (filterType) => {
+            if (filterType === 'category') {
+                currentFilters.category = Array.from(document.querySelectorAll('.filter-category:checked')).map(cb => cb.value);
+            } else if (filterType === 'price') {
+                currentFilters.price = document.getElementById('price-filter').value;
+            } else if (filterType === 'rating') {
+                const selectedRating = document.querySelector('input[name="rating"]:checked');
+                currentFilters.rating = selectedRating ? parseFloat(selectedRating.value) : 0;
+            }
+            
+            // Clear search query when filters are applied
+            document.getElementById('search-input').value = '';
+            currentSearchQuery = '';
+            document.getElementById('current-query').textContent = 'Filtered Results';
+
+
+            renderProducts();
+            showToast(`Filters applied.`, 'info');
+        };
+
+        const initAnalyticsChart = () => {
+            const ctx = document.getElementById('revenueChart').getContext('2d');
+            window.revenueChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                    // Using INR values (in lakhs for display clarity)
+                    datasets: [{
+                        label: 'Monthly Revenue (₹ in Lakhs)',
+                        data: [15, 16.5, 18, 19.5, 22, 24.5], 
+                        borderColor: '#007bff', // Blue
+                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                        tension: 0.4,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#007bff',
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Revenue (₹ Lakhs)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        };
+
+        // --- INITIALIZATION ---
+        window.onload = function() {
+            // Get DOM elements once
+            productGridElement = document.getElementById('product-grid');
+            cartCountElement = document.getElementById('cart-count');
+            cartItemsElement = document.getElementById('cart-items');
+            cartTotalElement = document.getElementById('cart-total');
+            checkoutButton = document.getElementById('checkout-button');
+            noResultsElement = document.getElementById('no-results');
+            productDetailsModalElement = document.getElementById('product-details-modal'); 
+            staticContentViewElement = document.getElementById('static-content-view'); 
+
+            // 1. Initial Render
+            renderProducts();
+            renderCart();
+
+            // 2. Hide modals by clicking outside
+            document.getElementById('cart-modal').addEventListener('click', (e) => {
+                if (e.target.id === 'cart-modal') {
+                    toggleCartModal(false);
+                }
+            });
+            productDetailsModalElement.addEventListener('click', (e) => {
+                if (e.target.id === 'product-details-modal') {
+                    toggleProductDetailsModal(false);
+                }
+            });
+            
+            // 3. Ensure Shopping view is the default view
+            showView('shopping'); 
+        };
+
+    </script>
+</body>
+</html>
